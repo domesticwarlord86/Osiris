@@ -11,6 +11,7 @@ If you're not in an instance and not in a party, it releases and reloads the pro
 
 ###  ToDo:
 - [ ] Add handling for not in an instance but in party.
+- [ ] Add Sprinting while in instance? https://github.com/athlon18/RBtrust/blob/196ad6aa95522d4f06ac4706b83ae3fe687840aa/Plugins/Trust/Trust.cs#L124
 
 ## Need Help?
 Don't hesitate to ask questions in my discord channel through the discord link below.
