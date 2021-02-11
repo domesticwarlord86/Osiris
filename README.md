@@ -10,7 +10,7 @@ If in an instance, and the party is in combat, it will wait for Raise and then a
 If you're not in an instance and not in a party, it releases and reloads the profile.
 
 ###  ToDo:
-- [] Add handling for not in an instance but in party.
+- [ ] Add handling for not in an instance but in party.
 
 ## Need Help?
 Don't hesitate to ask questions in my discord channel through the discord link below.
