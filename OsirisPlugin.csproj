@@ -45,6 +45,7 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="OsirisSettings.cs" />
         <Compile Include="OsirisSettingsForm.cs">
           <SubType>Form</SubType>
         </Compile>
