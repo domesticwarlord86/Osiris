@@ -97,7 +97,7 @@ namespace LlamaLibrary
                 Log("Handling Death");
                 
                 //Logic for Bozja and Eureka
-                if (WorldManager.ZoneId == 920 || WorldManager.ZoneId == 732 || WorldManager.ZoneId == 763)
+                if (WorldManager.ZoneId == 920 || WorldManager.ZoneId == 732 || WorldManager.ZoneId == 763 || WorldManager.ZoneId == 795 || WorldManager.ZoneId == 827)
                 {
                     await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
                     if (!PartyManager.IsInParty)
