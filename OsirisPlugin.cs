@@ -149,10 +149,38 @@ namespace LlamaLibrary
                     return true;                    
                 }
                 
-                
-                
+                while (PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))
+								{
+									Log($"In a NPC party.");
+									await Coroutine.Wait(-1, () => (Core.Me.IsAlive));  
+									Log($"We are alive, loading profile...");
+									NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
+									NeoProfileManager.UpdateCurrentProfileBehavior();
+									await Coroutine.Sleep(5000);
+									return true;								
+                }                
+								
                 while (PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat))
                 {
+									// Check if loading in the case of instant release like Squadron dungeons	
+									if (CommonBehaviors.IsLoading)
+									{
+											while (CommonBehaviors.IsLoading)
+											{
+													Log($"Waiting for zoning to finish...");
+													await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
+											}
+											while (!Core.Me.IsAlive)
+											{
+													Log($"Zoning finsihed, waiting to become alive...");
+													await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
+											}   
+											Log($"We are alive, loading profile...");
+											NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
+											NeoProfileManager.UpdateCurrentProfileBehavior();
+											await Coroutine.Sleep(5000);
+											return true;
+									}										
                     await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
                     Log("Party memebers in combat, waiting for Raise.");
                     await Coroutine.Wait(-1, () => Core.Me.HasAura(148) || !PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat));
@@ -174,8 +202,27 @@ namespace LlamaLibrary
                     return true;
                 }
 
-                if (!PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat))
+                while (!PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat))
                 {
+									// Check if loading in the case of instant release like Squadron dungeons	
+									if (CommonBehaviors.IsLoading)
+									{
+											while (CommonBehaviors.IsLoading)
+											{
+													Log($"Waiting for zoning to finish...");
+													await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
+											}
+											while (!Core.Me.IsAlive)
+											{
+													Log($"Zoning finsihed, waiting to become alive...");
+													await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
+											}   
+											Log($"We are alive, loading profile...");
+											NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
+											NeoProfileManager.UpdateCurrentProfileBehavior();
+											await Coroutine.Sleep(5000);
+											return true;
+									}										
                     await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
                     Log("No one is in combat, releasing...");
                     await Coroutine.Sleep(500);
@@ -195,7 +242,9 @@ namespace LlamaLibrary
                     NeoProfileManager.UpdateCurrentProfileBehavior();
                     await Coroutine.Sleep(5000);
                     return true;
-                }                
+                }
+								
+                
             }
             
             if (!DutyManager.InInstance && !PartyManager.IsInParty)
