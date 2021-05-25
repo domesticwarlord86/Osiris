@@ -133,6 +133,7 @@ namespace LlamaLibrary
                     if (NotificationRevive.IsOpen)
                     {
                         Log($"Clicking Accept");
+						await Coroutine.Sleep(3000);
                         ClientGameUiRevive.Revive();
                         await Coroutine.Wait(-1, () => (CommonBehaviors.IsLoading));
                         Log($"Waiting for loading to finish...");
