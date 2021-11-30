@@ -5,7 +5,7 @@ using Clio.Utilities;
 using ff14bot.Enums;
 using ff14bot.Helpers;
 
-namespace LlamaLibrary
+namespace OsirisPlugin
 {
     public class OsirisSettings : JsonSettings
     {

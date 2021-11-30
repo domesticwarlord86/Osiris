@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace LlamaLibrary
+namespace OsirisPlugin
 {
     public partial class OsirisSettingsForm : Form
     {

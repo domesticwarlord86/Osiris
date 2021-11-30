@@ -14,7 +14,7 @@ using ff14bot.NeoProfiles;
 using ff14bot.RemoteWindows;
 using TreeSharp;
 
-namespace LlamaLibrary
+namespace OsirisPlugin
 {
     public class OsirisPlugin : BotPlugin
     {

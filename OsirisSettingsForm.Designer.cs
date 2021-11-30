@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace LlamaLibrary
+namespace OsirisPlugin
 {
     partial class OsirisSettingsForm
     {
