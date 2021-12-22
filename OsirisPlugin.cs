@@ -92,7 +92,7 @@ namespace OsirisPlugin
 
         private async Task<bool> HandleDeath()
         {
-            if (DutyManager.InInstance)
+            if (DutyManager.InInstance || PartyManager.IsInParty)
             {
                 Log("Handling Death");
                 
@@ -151,14 +151,14 @@ namespace OsirisPlugin
                 }
                 
                 while (PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))
-								{
-									Log($"In a NPC party.");
-									await Coroutine.Wait(-1, () => (Core.Me.IsAlive));  
-									Log($"We are alive, loading profile...");
-									NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
-									NeoProfileManager.UpdateCurrentProfileBehavior();
-									await Coroutine.Sleep(5000);
-									return true;								
+                {
+                    Log($"In a NPC party.");
+                    await Coroutine.Wait(-1, () => (Core.Me.IsAlive));  
+                    Log($"We are alive, loading profile...");
+                    NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
+                    NeoProfileManager.UpdateCurrentProfileBehavior();
+                    await Coroutine.Sleep(5000);
+                    return true;								
                 }                
 								
                 while (PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat))
@@ -268,7 +268,8 @@ namespace OsirisPlugin
                 NeoProfileManager.UpdateCurrentProfileBehavior();
                 await Coroutine.Sleep(5000);
                 return true;
-            }            
+            }
+            
 
             return false;
         }
