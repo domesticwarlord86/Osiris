@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO.Pipes;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -34,8 +33,6 @@ namespace OsirisPlugin
         };        
         
         private static readonly Random _random = new Random();
-        
-        private static NamedPipeClientStream pipe;
 
         private Composite deathCoroutine;
         private OsirisSettingsForm _form;
@@ -88,190 +85,232 @@ namespace OsirisPlugin
         {
             TreeRoot.OnStart -= setHooks;
         }
+        
+        private bool IsInBozjaOrEureka()
+        {
+            return WorldManager.ZoneId == 975 || WorldManager.ZoneId == 920 || WorldManager.ZoneId == 732 ||
+                   WorldManager.ZoneId == 763 || WorldManager.ZoneId == 795 || WorldManager.ZoneId == 827;
+        }
+
+        private bool HasRezzerInParty()
+        {
+            return PartyManager.AllMembers.Any(i => i.BattleCharacter.CurrentJob == ClassJobType.WhiteMage || 
+                                                    i.BattleCharacter.CurrentJob == ClassJobType.Scholar ||
+                                                    i.BattleCharacter.CurrentJob == ClassJobType.Summoner ||
+                                                    i.BattleCharacter.CurrentJob == ClassJobType.RedMage ||
+                                                    i.BattleCharacter.CurrentJob == ClassJobType.Astrologian ||
+                                                    i.BattleCharacter.CurrentJob == ClassJobType.Sage ||
+                                                    i.BattleCharacter.CurrentJob == ClassJobType.Arcanist ||
+                                                    i.BattleCharacter.CurrentJob == ClassJobType.Conjurer);
+        }
+        
+        private bool AnyPartyMemberAlive()
+        {
+            return PartyManager.AllMembers.Any(i => i.BattleCharacter.IsAlive);
+        }
 
 
         private async Task<bool> HandleDeath()
         {
-            if (DutyManager.InInstance || PartyManager.IsInParty)
+            var currentZone = WorldManager.CurrentZoneName;
+            
+            // Check if loading in the case of instant release like Squadron dungeons	
+            if (CommonBehaviors.IsLoading)
             {
-                Log("Handling Death");
-                
-                //Logic for Bozja and Eureka
-                if (WorldManager.ZoneId == 975 || WorldManager.ZoneId == 920 || WorldManager.ZoneId == 732 || WorldManager.ZoneId == 763 || WorldManager.ZoneId == 795 || WorldManager.ZoneId == 827)
-                {
-                    await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
-                    if (!PartyManager.IsInParty)
-                    {
-                        if (OsirisSettings.Instance.RaiseShout)
-                        {
-                                while (!Core.Me.HasAura(148) && Core.Me.CurrentHealth < 1)
-                                {
-                                    Log("Shout for raise selected, shouting...");
-                                    ChatManager.SendChat(Shouts[_random.Next(0, Shouts.Length)]);
-                                    await Coroutine.Wait(OsirisSettings.Instance.ShoutTime * 60 * 1000, () => Core.Me.HasAura(148) || Core.Me.CurrentHealth > 1);
-                                    if (Core.Me.HasAura(148))
-                                    {
-                                        break;
-                                    }
-                                }
+                Log($"Waiting to be alive.");
+                await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
+            }
+            
+ 
+            //Logic for Bozja and Eureka
+            if (IsInBozjaOrEureka())
+            {
+                Log($"Handling Death For {currentZone}");
+                await HandleDeathInBozjaAndEureka();
+            }
+               
+            // Logic for NPC parties
+            while (PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))
+            {
+                Log($"In a NPC party. Waiting for zone.");
+                await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
+            }                
+								
+            //Logic for In Duty
+            if (DutyManager.InInstance)
+            {
+                await HandleDeathInInstance();
+            }
 
-                                await Coroutine.Sleep(500);
-                        }
-                        else
-                        {
-                            Log("Shout for raise not selected. Waiting for raise or auto Starting Point.");
-                            await Coroutine.Wait(-1, () => Core.Me.HasAura(148) || Core.Me.CurrentHealth > 1);
-                        }
+            //Logic for not in a party
+            if (PartyManager.IsInParty)
+            {
+                if (HasRezzerInParty())
+                {
+                    Log($"We died in {currentZone}. We have a Raiser.");
+                    await WaitForLife();
+                }
+                else
+                {
+                    if (OsirisSettings.Instance.ReleaseWait)
+                    {
+                        Log($"We died in {currentZone}. Wait for release checked.");
+                        await WaitForLife();
                     }
                     else
                     {
-                        Log("In party, waiting for party member to raise us.");
-                        await Coroutine.Wait(-1, () => Core.Me.HasAura(148) || Core.Me.CurrentHealth > 1);                        
+                        Log($"We died in {currentZone} with no Raiser in party.");
+                        await Release();
                     }
+                }
+            }
+                
+            //Logic for everything else
+            if (!PartyManager.IsInParty)
+            {
 
-                    Log($"We have Raise Aura");
-                    if (NotificationRevive.IsOpen)
+                if (OsirisSettings.Instance.ReleaseWait)
+                {
+                    await WaitForLife();
+                }
+                else
+                {
+                    await Release();
+                }
+
+            }           
+            
+
+            Log($"We are alive, loading profile...");
+            NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path);
+            NeoProfileManager.UpdateCurrentProfileBehavior();
+            await Coroutine.Sleep(5000);
+            return true;
+        }
+
+        private async Task HandleDeathInBozjaAndEureka()
+        { 
+            await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
+            if (!PartyManager.IsInParty)
+            {
+                if (OsirisSettings.Instance.RaiseShout)
+                {
+                    while (!Core.Me.HasAura(148) && Core.Me.CurrentHealth < 1)
                     {
-                        Log($"Clicking Accept");
-						await Coroutine.Sleep(3000);
-                        ClientGameUiRevive.Revive();
-                        await Coroutine.Wait(-1, () => (CommonBehaviors.IsLoading));
-                        Log($"Waiting for loading to finish...");
-                        await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
-                        if (OsirisSettings.Instance.RaiseShout)
+                        Log("Shout for raise selected, shouting...");
+                        ChatManager.SendChat(Shouts[_random.Next(0, Shouts.Length)]);
+                        await Coroutine.Wait(OsirisSettings.Instance.ShoutTime * 60 * 1000, () => Core.Me.HasAura(148) || Core.Me.CurrentHealth > 1);
+                        if (Core.Me.HasAura(148))
                         {
-                            ChatManager.SendChat("/say Thanks for the raise.");
+                            await AcceptRaise();
+                            break;
+                        }
+                        if (Core.Me.CurrentHealth > 1)
+                        {
+                            break;
                         }
                     }
-
-                    await Coroutine.Wait(15000, () => ClientGameUiRevive.ReviveState == ReviveState.None);
-
-                    Poi.Clear("We live!");
-                    return true;                    
                 }
-                
-                while (PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))
+                else
                 {
-                    Log($"In a NPC party.");
-                    await Coroutine.Wait(-1, () => (Core.Me.IsAlive));  
-                    Log($"We are alive, loading profile...");
-                    NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
-                    NeoProfileManager.UpdateCurrentProfileBehavior();
-                    await Coroutine.Sleep(5000);
-                    return true;								
-                }                
-								
-                while (PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat))
-                {
-									// Check if loading in the case of instant release like Squadron dungeons	
-									if (CommonBehaviors.IsLoading)
-									{
-											while (CommonBehaviors.IsLoading)
-											{
-													Log($"Waiting for zoning to finish...");
-													await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
-											}
-											while (!Core.Me.IsAlive)
-											{
-													Log($"Zoning finsihed, waiting to become alive...");
-													await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
-											}   
-											Log($"We are alive, loading profile...");
-											NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
-											NeoProfileManager.UpdateCurrentProfileBehavior();
-											await Coroutine.Sleep(5000);
-											return true;
-									}										
-                    await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
-                    Log("Party memebers in combat, waiting for Raise.");
-                    await Coroutine.Wait(-1, () => Core.Me.HasAura(148) || !PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat));
-                    await Coroutine.Sleep(500);
-                    if (!PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat))
+                    if (OsirisSettings.Instance.ReleaseWait)
                     {
-                        break;
+                        await WaitForLife();
                     }
-                    Log($"We have Raise Aura");
-                    if (NotificationRevive.IsOpen)
+                    else
                     {
-                        Log($"Clicking Accept");
-                        ClientGameUiRevive.Revive();
+                        await Release();
+
                     }
-
-                    await Coroutine.Wait(15000, () => ClientGameUiRevive.ReviveState == ReviveState.None);
-
-                    Poi.Clear("We live!");
-                    return true;
                 }
-
-                while (!PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat))
-                {
-									// Check if loading in the case of instant release like Squadron dungeons	
-									if (CommonBehaviors.IsLoading)
-									{
-											while (CommonBehaviors.IsLoading)
-											{
-													Log($"Waiting for zoning to finish...");
-													await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
-											}
-											while (!Core.Me.IsAlive)
-											{
-													Log($"Zoning finsihed, waiting to become alive...");
-													await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
-											}   
-											Log($"We are alive, loading profile...");
-											NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
-											NeoProfileManager.UpdateCurrentProfileBehavior();
-											await Coroutine.Sleep(5000);
-											return true;
-									}										
-                    await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
-                    Log("No one is in combat, releasing...");
-                    await Coroutine.Sleep(500);
-                    ff14bot.RemoteWindows.SelectYesno.ClickYes();
-                    while (CommonBehaviors.IsLoading)
-                    {
-                        Log($"Waiting for zoning to finish...");
-                        await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
-                    }
-                    while (!Core.Me.IsAlive)
-                    {
-                        Log($"Zoning finsihed, waiting to become alive...");
-                        await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
-                    }   
-                    Log($"We are alive, loading profile...");
-                    NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
-                    NeoProfileManager.UpdateCurrentProfileBehavior();
-                    await Coroutine.Sleep(5000);
-                    return true;
-                }
-								
-                
+                    
             }
-            
-            if (!DutyManager.InInstance && !PartyManager.IsInParty)
+            // If not in party
+            else
             {
-                Log($"Dead and not in party. Accepting return home and restarting profile.");
-                await Coroutine.Sleep(5000);
-                ff14bot.RemoteWindows.SelectYesno.ClickYes();
-                while (CommonBehaviors.IsLoading)
+                if (OsirisSettings.Instance.ReleaseWait)
                 {
-                    Log($"Waiting for zoning to finish...");
-                    await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
+                    if (HasRezzerInParty())
+                    {
+                        Log("In party, waiting for party member to raise us.");
+                        await WaitForLife();
+                    }
                 }
-                while (!Core.Me.IsAlive)
+                else
                 {
-                    Log($"Zoning finsihed, waiting to become alive...");
-                    await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
-                }   
-                Log($"We are alive, loading profile...");
-                NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path, true);
-                NeoProfileManager.UpdateCurrentProfileBehavior();
-                await Coroutine.Sleep(5000);
-                return true;
+                    await Release();
+                }
             }
-            
 
-            return false;
+            if (NotificationRevive.IsOpen)
+            {
+                await AcceptRaise();
+            }
+        }
+
+        private async Task HandleDeathInInstance()
+        {
+            if (PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat) && AnyPartyMemberAlive())
+            {
+                Log("Party memebers in combat, waiting for Raise.");
+                await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
+                await Coroutine.Wait(-1, () => Core.Me.HasAura(148) || !PartyManager.AllMembers.Any(i => i.BattleCharacter.InCombat) && AnyPartyMemberAlive());
+                await Coroutine.Sleep(500);
+                if (Core.Me.HasAura(148))
+                {
+                    await AcceptRaise();
+                    return;
+                }
+            }
+
+            await Release();
+        }
+
+        private async Task Release()
+        {
+            Log($"Releasing.");
+            await Coroutine.Wait(-1, () => (SelectYesno.IsOpen));
+            SelectYesno.ClickYes();
+            await Coroutine.Wait(-1, () => (CommonBehaviors.IsLoading));
+            while (CommonBehaviors.IsLoading)
+            {
+                Log($"Waiting for zoning to finish...");
+                await Coroutine.Wait(-1, () => (!CommonBehaviors.IsLoading));
+            }            
+            while (!Core.Me.IsAlive)
+            {
+                Log($"Zoning finsihed, waiting to become alive...");
+                await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
+            }
+
+        }
+
+        private async Task AcceptRaise()
+        {
+            Log($"We have Raise Aura.");
+            Log($"Clicking Accept");
+            await Coroutine.Sleep(500);
+            ClientGameUiRevive.Revive();
+            await Coroutine.Wait(-1, () => (CommonBehaviors.IsLoading));
+            Log($"Waiting for loading to finish...");
+            await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
+            if (OsirisSettings.Instance.RaiseShout)
+            {
+                ChatManager.SendChat("/say Thanks for the raise.");
+            }
+            await Coroutine.Wait(15000, () => ClientGameUiRevive.ReviveState == ReviveState.None);
+            Poi.Clear("We live!");
+        }
+
+        private async Task WaitForLife()
+        {
+            Log("Waiting for raise or auto Starting Point.");
+            await Coroutine.Wait(-1, () => Core.Me.HasAura(148) || Core.Me.CurrentHealth > 1);
+            if (Core.Me.HasAura(148))
+            {
+                await AcceptRaise();
+            }
+
         }
 
 

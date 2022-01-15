@@ -38,14 +38,15 @@ namespace OsirisPlugin
             // 
             this.propertyGrid1.Location = new System.Drawing.Point(12, 12);
             this.propertyGrid1.Name = "propertyGrid1";
-            this.propertyGrid1.Size = new System.Drawing.Size(504, 426);
+            this.propertyGrid1.Size = new System.Drawing.Size(553, 426);
             this.propertyGrid1.TabIndex = 0;
+            this.propertyGrid1.Click += new System.EventHandler(this.propertyGrid1_Click);
             // 
             // OsirisSettingsForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(528, 450);
+            this.ClientSize = new System.Drawing.Size(577, 453);
             this.Controls.Add(this.propertyGrid1);
             this.Name = "OsirisSettingsForm";
             this.Text = "OsirisSettings";

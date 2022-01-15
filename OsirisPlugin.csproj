@@ -7,7 +7,7 @@
         <ProjectGuid>{802629CF-D2BF-4391-B52A-BDB2A690B99A}</ProjectGuid>
         <OutputType>Library</OutputType>
         <AppDesignerFolder>Properties</AppDesignerFolder>
-        <RootNamespace>TesterPlugin</RootNamespace>
+        <RootNamespace>OsirisPlugin</RootNamespace>
         <AssemblyName>OsirisPlugin</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
@@ -33,7 +33,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="PresentationCore" />
-        <Reference Include="RebornBuddy, Version=1.0.409.0, Culture=neutral, PublicKeyToken=48d7174f8a943034">
+        <Reference Include="RebornBuddy">
           <HintPath>..\..\rebornbuddy.exe</HintPath>
         </Reference>
         <Reference Include="System" />

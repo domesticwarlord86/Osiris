@@ -14,5 +14,10 @@ namespace OsirisPlugin
         {
             propertyGrid1.SelectedObject = OsirisSettings.Instance;
         }
+
+        private void propertyGrid1_Click(object sender, EventArgs e)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

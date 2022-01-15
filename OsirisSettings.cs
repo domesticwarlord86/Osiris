@@ -15,10 +15,30 @@ namespace OsirisPlugin
         public OsirisSettings() : base(Path.Combine(CharacterSettingsDirectory, "OsirisSettings.json")) {
 
         }
+ 
+        private bool _waitForRelease;
+        [Description("Should we wait until the release timer runs out, or release immediatly?" +
+                     "\n Setting this to true will cause the bot to wait the 10 minute timer until either we get a raise or it runs out." +
+                     "\n Setting this to false will immediatly release once the party is out of combat.")]
+        [Category("Misc")]
+        [DefaultValue(true)]
+        public bool ReleaseWait
+        {
+            get => _waitForRelease;
+            set
+            {
+                if (_waitForRelease != value)
+                {
+                    _waitForRelease = value;
+                    Save();
+                }
+            }
+        }
         
         private bool _raiseshout;
-
-        [Description("Shout for raises while in Bozja or Eureka.")]
+        [Description("Shout for raises while in Bozja or Eureka." +
+                     "\n Setting this to true will cause the bot to shout for raise and wait until the timer runs out or we get a raise." +
+                     "\n Be careful while using this, as it could cause spam in the chat.")]
         [Category("Bozja/Eureka")]
         [DefaultValue(false)]
         public bool RaiseShout
@@ -35,8 +55,7 @@ namespace OsirisPlugin
         }
         
         private int _shoutTime;
-        
-        [Description("Time to wait between shouts for raise.")]
+        [Description("Time to wait in minutes between shouts for raise.")]
         [DefaultValue(5)]
         [Category("Bozja/Eureka")]
         public int ShoutTime
