@@ -54,6 +54,23 @@ namespace OsirisPlugin
             }
         }
         
+        private bool _thankRaiser;
+        [Description("Thank the raiser in say after being raised by someone.")]
+        [Category("Bozja/Eureka")]
+        [DefaultValue(true)]
+        public bool ThankYouSir
+        {
+            get => _thankRaiser;
+            set
+            {
+                if (_thankRaiser != value)
+                {
+                    _thankRaiser = value;
+                    Save();
+                }
+            }
+        }
+        
         private int _shoutTime;
         [Description("Time to wait in minutes between shouts for raise.")]
         [DefaultValue(5)]

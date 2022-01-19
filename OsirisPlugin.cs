@@ -327,7 +327,7 @@ namespace OsirisPlugin
             await Coroutine.Wait(-1, () => (CommonBehaviors.IsLoading));
             Log($"Waiting for loading to finish...");
             await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
-            if (OsirisSettings.Instance.RaiseShout)
+            if (OsirisSettings.Instance.ThankYouSir)
             {
                 ChatManager.SendChat("/say Thanks for the raise.");
             }
