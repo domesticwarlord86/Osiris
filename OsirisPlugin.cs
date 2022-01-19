@@ -137,13 +137,13 @@ namespace OsirisPlugin
             }                
 								
             //Logic for In Duty
-            if (DutyManager.InInstance)
+            if (DutyManager.InInstance && !IsInBozjaOrEureka())
             {
                 await HandleDeathInInstance();
             }
 
             //Logic for not in a party
-            if (PartyManager.IsInParty)
+            if (PartyManager.IsInParty && !IsInBozjaOrEureka() && !DutyManager.InInstance)
             {
                 if (HasRezzerInParty())
                 {
@@ -166,7 +166,7 @@ namespace OsirisPlugin
             }
                 
             //Logic for everything else
-            if (!PartyManager.IsInParty)
+            if (!PartyManager.IsInParty && !IsInBozjaOrEureka() && !DutyManager.InInstance)
             {
 
                 if (OsirisSettings.Instance.ReleaseWait)
@@ -219,27 +219,60 @@ namespace OsirisPlugin
                     }
                     else
                     {
+                        Log("Releasing in Bozja, gonna loose some mettle here.");
                         await Release();
 
                     }
                 }
                     
             }
-            // If not in party
+            // If is in party
             else
             {
                 if (OsirisSettings.Instance.ReleaseWait)
                 {
                     if (HasRezzerInParty())
                     {
-                        Log("In party, waiting for party member to raise us.");
+                        Log("In a party with a rezzer, waiting for party member to raise us.");
                         await WaitForLife();
                     }
+                    else
+                    {
+                        if (OsirisSettings.Instance.RaiseShout)
+                        {
+                            while (!Core.Me.HasAura(148) && Core.Me.CurrentHealth < 1)
+                            {
+                                Log("In a party with no rezzer. Shout for raise selected, shouting...");
+                                ChatManager.SendChat(Shouts[_random.Next(0, Shouts.Length)]);
+                                await Coroutine.Wait(OsirisSettings.Instance.ShoutTime * 60 * 1000, () => Core.Me.HasAura(148) || Core.Me.CurrentHealth > 1);
+                                if (Core.Me.HasAura(148))
+                                {
+                                    await AcceptRaise();
+                                    break;
+                                }
+                                if (Core.Me.CurrentHealth > 1)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (OsirisSettings.Instance.ReleaseWait)
+                            {
+                                    Log("In party, with no rezzer but ReleaseWait is checked. Waiting for rez.");
+                                    await WaitForLife();                        
+
+                            }
+                            else
+                            {
+                                Log("In a party without a Rezzer. Releasing in Bozja, gonna loose some mettle here.");
+                                await Release();
+                            }
+                        }
+                    }
                 }
-                else
-                {
-                    await Release();
-                }
+
             }
 
             if (NotificationRevive.IsOpen)
