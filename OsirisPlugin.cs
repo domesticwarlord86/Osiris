@@ -94,14 +94,11 @@ namespace OsirisPlugin
 
         private bool HasRezzerInParty()
         {
-            return PartyManager.AllMembers.Any(i => i.BattleCharacter.CurrentJob == ClassJobType.WhiteMage || 
-                                                    i.BattleCharacter.CurrentJob == ClassJobType.Scholar ||
-                                                    i.BattleCharacter.CurrentJob == ClassJobType.Summoner ||
-                                                    i.BattleCharacter.CurrentJob == ClassJobType.RedMage ||
-                                                    i.BattleCharacter.CurrentJob == ClassJobType.Astrologian ||
-                                                    i.BattleCharacter.CurrentJob == ClassJobType.Sage ||
-                                                    i.BattleCharacter.CurrentJob == ClassJobType.Arcanist ||
-                                                    i.BattleCharacter.CurrentJob == ClassJobType.Conjurer);
+            return PartyManager.AllMembers.Any(i => i.BattleCharacter.CurrentJob is ClassJobType.WhiteMage or 
+                                                        ClassJobType.Scholar or ClassJobType.Summoner or 
+                                                        ClassJobType.RedMage or ClassJobType.Astrologian or 
+                                                        ClassJobType.Sage or ClassJobType.Arcanist or ClassJobType.Conjurer
+                                                    && !i.IsMe && i.BattleCharacter.IsAlive);
         }
         
         private bool AnyPartyMemberAlive()
