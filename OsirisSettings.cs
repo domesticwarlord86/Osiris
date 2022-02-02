@@ -21,7 +21,7 @@ namespace OsirisPlugin
                      "\n Setting this to true will cause the bot to wait the 10 minute timer until either we get a raise or it runs out." +
                      "\n Setting this to false will immediatly release once the party is out of combat.")]
         [Category("Misc")]
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         public bool ReleaseWait
         {
             get => _waitForRelease;
