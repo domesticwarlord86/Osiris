@@ -127,14 +127,14 @@ namespace OsirisPlugin
             }
                
             // Logic for NPC parties
-            while (PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))
+            if (PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))
             {
                 Log($"In a NPC party. Waiting for zone.");
                 await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
             }                
 								
             //Logic for In Duty
-            if (DutyManager.InInstance && !IsInBozjaOrEureka())
+            if (DutyManager.InInstance && !IsInBozjaOrEureka() && !PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))
             {
                 await HandleDeathInInstance();
             }
