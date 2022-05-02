@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -10,6 +11,7 @@ using ff14bot.Enums;
 using ff14bot.Helpers;
 using ff14bot.Managers;
 using ff14bot.NeoProfiles;
+using ff14bot.Objects;
 using ff14bot.RemoteWindows;
 using TreeSharp;
 
@@ -35,8 +37,19 @@ namespace OsirisPlugin
         private static readonly Random _random = new Random();
 
         private Composite deathCoroutine;
+        private ActionRunCoroutine _coroutine;
         private OsirisSettingsForm _form;
         public override string Author { get; } = "Kayla, DomesticWarlord86";
+        
+        private static Dictionary<ClassJobType, uint> RezSpells = new Dictionary<ClassJobType, uint>()
+        {
+            {ClassJobType.WhiteMage, 125},
+            {ClassJobType.Astrologian, 3603},
+            {ClassJobType.Scholar, 173},
+            {ClassJobType.Summoner, 173},
+            {ClassJobType.RedMage, 7523},
+            {ClassJobType.Sage, 24287}
+        };
 
         public override Version Version => new Version(0, 1);
 
@@ -79,6 +92,7 @@ namespace OsirisPlugin
         {
             Log("Setting Hooks");
             TreeHooks.Instance.AddHook("DeathReviveLogic", deathCoroutine);
+            _coroutine = new ActionRunCoroutine(r => RaisePeople());
         }
 
         public override void OnDisabled()
@@ -106,6 +120,25 @@ namespace OsirisPlugin
             return PartyManager.AllMembers.Any(i => i.BattleCharacter.IsAlive);
         }
 
+        internal async Task<bool> RaisePeople()
+        {
+            if (Core.Me.InCombat || !Core.Me.IsAlive || DutyManager.InInstance || FateManager.WithinFate) return false;
+
+            // Cast Raise on nearby people.
+            if (!DutyManager.InInstance && RezSpells.ContainsKey(Core.Me.CurrentJob) && OsirisSettings.Instance.Raise)
+            {
+                var deadPeople = GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(p =>
+                    !p.IsNpc && !p.HasAura(148) && !p.IsAlive && Core.Me.Distance(p) < 30 && !p.IsMe).ToList();
+                if (deadPeople.Any())
+                {
+                    foreach (var partyMember in deadPeople.Where(partyMember => Core.Me.Distance(partyMember) < 30))
+                    {
+                        await Resurrect(partyMember);
+                    }
+                }
+            }
+            return false;
+        }
 
         private async Task<bool> HandleDeath()
         {
@@ -187,6 +220,8 @@ namespace OsirisPlugin
 
         private async Task HandleDeathInBozjaAndEureka()
         { 
+            
+            
             await Coroutine.Wait(3000, () => ClientGameUiRevive.ReviveState == ReviveState.Dead);
             if (!PartyManager.IsInParty)
             {
@@ -341,6 +376,36 @@ namespace OsirisPlugin
                 await AcceptRaise();
             }
 
+        }
+        
+        internal async Task Resurrect(BattleCharacter partyMember)
+        {
+            if (!RezSpells.ContainsKey(Core.Me.CurrentJob)) return;
+
+            var spell = ActionManager.CurrentActions[RezSpells[Core.Me.CurrentJob]];
+
+            if (!ActionManager.ActionReady(ActionType.Spell, spell.Id)) return;
+
+            if (Core.Me.IsMounted)
+            {
+                ActionManager.Dismount();
+                await Coroutine.Wait(10000, () => !Core.Me.IsMounted);
+            }
+
+            Log(($"Casting {spell.LocalizedName} on {partyMember.Name}"));
+            if (ActionManager.ActionReady(ActionType.Spell, 7561))
+            {
+                ActionManager.DoAction(7561, Core.Me);
+                await Coroutine.Sleep(500);
+                ActionManager.DoAction(spell, partyMember);
+                await Coroutine.Sleep(1000);
+            }
+            else
+            {
+                ActionManager.DoAction(spell, partyMember);
+                await Coroutine.Wait(10000, () => Core.Me.IsCasting);
+                await Coroutine.Wait(10000, () => !Core.Me.IsCasting);
+            }
         }
 
 

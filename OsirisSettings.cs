@@ -86,7 +86,24 @@ namespace OsirisPlugin
                     Save();
                 }
             }
-        }        
+        }  
+        
+        private bool _raiseTheDead;
+        [Description("Enable raising nearby dead people.")]
+        [Category("Raise")]
+        [DefaultValue(false)]
+        public bool Raise
+        {
+            get => _raiseTheDead;
+            set
+            {
+                if (_raiseTheDead != value)
+                {
+                    _raiseTheDead = value;
+                    Save();
+                }
+            }
+        }
 
     }
 }
