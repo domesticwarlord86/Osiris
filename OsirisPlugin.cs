@@ -10,6 +10,7 @@ using ff14bot.Behavior;
 using ff14bot.Enums;
 using ff14bot.Helpers;
 using ff14bot.Managers;
+using ff14bot.Navigation;
 using ff14bot.NeoProfiles;
 using ff14bot.Objects;
 using ff14bot.RemoteWindows;
@@ -38,6 +39,7 @@ namespace OsirisPlugin
 
         private Composite deathCoroutine;
         private ActionRunCoroutine _coroutine;
+        private ActionRunCoroutine _fakeDeath;
         private OsirisSettingsForm _form;
         public override string Author { get; } = "Kayla, DomesticWarlord86";
         
@@ -93,6 +95,7 @@ namespace OsirisPlugin
             Log("Setting Hooks");
             TreeHooks.Instance.AddHook("DeathReviveLogic", deathCoroutine);
             _coroutine = new ActionRunCoroutine(r => RaisePeople());
+            _fakeDeath = new ActionRunCoroutine(r => HandleFakeDeath());
         }
 
         public override void OnDisabled()
@@ -119,6 +122,22 @@ namespace OsirisPlugin
         {
             return PartyManager.AllMembers.Any(i => i.BattleCharacter.IsAlive);
         }
+        
+        internal async Task<bool> HandleFakeDeath()
+        {
+            if (Core.Me.CurrentHealth >= 1) return false;
+            
+            if (Core.Me.CurrentHealth == 0)
+            {
+                Logging.WriteDiagnostic($"Catching fake death. Waiting to be alive.");
+                await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
+                Logging.WriteDiagnostic($"We are alive, loading profile...");
+                NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path);
+                NeoProfileManager.UpdateCurrentProfileBehavior();
+                await Coroutine.Sleep(5000);
+            }
+            return false;
+        }
 
         internal async Task<bool> RaisePeople()
         {
@@ -128,11 +147,26 @@ namespace OsirisPlugin
             if (!DutyManager.InInstance && RezSpells.ContainsKey(Core.Me.CurrentJob) && OsirisSettings.Instance.Raise)
             {
                 var deadPeople = GameObjectManager.GetObjectsOfType<BattleCharacter>().Where(p =>
-                    !p.IsNpc && !p.HasAura(148) && !p.IsAlive && Core.Me.Distance(p) < 30 && !p.IsMe).ToList();
+                    !p.IsNpc && !p.HasAura(148) && !p.IsAlive && Core.Me.Distance(p) < 50 && !p.IsMe).ToList();
                 if (deadPeople.Any())
                 {
                     foreach (var partyMember in deadPeople.Where(partyMember => Core.Me.Distance(partyMember) < 30))
                     {
+                        if (partyMember.Distance2D(Core.Me.Location) >= 30)
+
+                        {
+                            Logging.WriteDiagnostic($"Hunting those Jackals.");
+                            var _target = partyMember.Location;
+                            Navigator.PlayerMover.MoveTowards(_target);
+                            while (_target.Distance2D(Core.Me.Location) >= 30)
+                            {
+                                Navigator.PlayerMover.MoveTowards(_target);
+                                await Coroutine.Sleep(100);
+                            }
+
+                            Navigator.PlayerMover.MoveStop();
+                        }
+                        
                         await Resurrect(partyMember);
                     }
                 }
