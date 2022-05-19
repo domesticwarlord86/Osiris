@@ -38,8 +38,8 @@ namespace OsirisPlugin
         private static readonly Random _random = new Random();
 
         private Composite deathCoroutine;
-        private ActionRunCoroutine _coroutine;
-        private ActionRunCoroutine _fakeDeath;
+        private Composite RaisePeople;
+        private Composite FakeDeath;
         private OsirisSettingsForm _form;
         public override string Author { get; } = "Kayla, DomesticWarlord86";
         
@@ -83,6 +83,8 @@ namespace OsirisPlugin
         public override void OnInitialize()
         {
             deathCoroutine = new ActionRunCoroutine(ctx => HandleDeath());
+            RaisePeople = new ActionRunCoroutine(ctx => RaisePeopleTask());
+            FakeDeath = new ActionRunCoroutine(ctx => HandleFakeDeath());
         }
 
         public override void OnEnabled()
@@ -94,8 +96,8 @@ namespace OsirisPlugin
         {
             Log("Setting Hooks");
             TreeHooks.Instance.AddHook("DeathReviveLogic", deathCoroutine);
-            _coroutine = new ActionRunCoroutine(r => RaisePeople());
-            _fakeDeath = new ActionRunCoroutine(r => HandleFakeDeath());
+            TreeHooks.Instance.AddHook("TreeStart", RaisePeople);
+            TreeHooks.Instance.AddHook("TreeStart", FakeDeath);
         }
 
         public override void OnDisabled()
@@ -129,9 +131,9 @@ namespace OsirisPlugin
             
             if (Core.Me.CurrentHealth == 0)
             {
-                Logging.WriteDiagnostic($"Catching fake death. Waiting to be alive.");
+                Log($"Catching fake death. Waiting to be alive.");
                 await Coroutine.Wait(-1, () => (Core.Me.IsAlive));
-                Logging.WriteDiagnostic($"We are alive, loading profile...");
+                Log($"We are alive, loading profile...");
                 NeoProfileManager.Load(NeoProfileManager.CurrentProfile.Path);
                 NeoProfileManager.UpdateCurrentProfileBehavior();
                 await Coroutine.Sleep(5000);
@@ -139,7 +141,7 @@ namespace OsirisPlugin
             return false;
         }
 
-        internal async Task<bool> RaisePeople()
+        internal async Task<bool> RaisePeopleTask()
         {
             if (Core.Me.InCombat || !Core.Me.IsAlive || DutyManager.InInstance || FateManager.WithinFate) return false;
 
@@ -155,7 +157,7 @@ namespace OsirisPlugin
                         if (partyMember.Distance2D(Core.Me.Location) >= 30)
 
                         {
-                            Logging.WriteDiagnostic($"Hunting those Jackals.");
+                            Log($"Moving to person to raise.");
                             var _target = partyMember.Location;
                             Navigator.PlayerMover.MoveTowards(_target);
                             while (_target.Distance2D(Core.Me.Location) >= 30)
