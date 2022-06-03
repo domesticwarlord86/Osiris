@@ -127,7 +127,7 @@ namespace OsirisPlugin
         
         internal async Task<bool> HandleFakeDeath()
         {
-            if (Core.Me.CurrentHealth >= 1 || !PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember))) return false;
+            if (Core.Me.CurrentHealth >= 1 || !(DutyManager.InInstance && !PartyManager.IsInParty) || !(DutyManager.InInstance && PartyManager.AllMembers.Any(i=> i.GetType() == typeof(TrustPartyMember)))) return false;
             
             if (Core.Me.CurrentHealth == 0)
             {
